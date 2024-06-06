@@ -102,6 +102,10 @@ name = "interactive_starkling"
 path = "interactive/interactive_starkling.rs"
 
 [[example]]
+name = "interactive_google"
+path = "interactive/interactive_google.rs"
+
+[[example]]
 name = "request_test"
 path = "interactive/request_test.rs"
 
