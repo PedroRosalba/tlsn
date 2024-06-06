@@ -1,24 +1,26 @@
 use http_body_util::Empty;
-use hyper::{body::Bytes, Request, StatusCode, Uri};
+// use hyper::{body::Bytes, Request, StatusCode, Uri};
+use hyper::{body::Bytes, Request, Uri};
 use hyper_util::rt::TokioIo;
-use regex::Regex;
+// use regex::Regex;
 use tlsn_core::{proof::SessionInfo, Direction, RedactedTranscript};
 use tlsn_prover::tls::{state::Prove, Prover, ProverConfig};
 use tlsn_verifier::tls::{Verifier, VerifierConfig};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
 use tracing::instrument;
-use std::{env, ops::Range, str};
+// use std::{env, ops::Range, str};
+use std::str;
 
 
-const SECRET: &str = "TLSNotary's private key 🤡";
-const SERVER_DOMAIN: &str = "backend.nodeguardians.io";
+// const SECRET: &str = "TLSNotary's private key 🤡";
+const SERVER_DOMAIN: &str = "oauth2.googleapis.com";
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let uri = "https://backend.nodeguardians.io/api/users/statistics?key=general";
+    let uri = "https://oauth2.googleapis.com/token";
     let id = "interactive verifier demo";
 
     // Connect prover and verifier.
@@ -63,14 +65,20 @@ async fn prover<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     .await
     .unwrap();
 
+    println!("Step 1");
+
     // Connect to TLS Server.
     let tls_client_socket = tokio::net::TcpStream::connect((server_domain, server_port))
         .await
         .unwrap();
 
+    println!("Step 2");
+
     // Pass server connection into the prover.
     let (mpc_tls_connection, prover_fut) =
         prover.connect(tls_client_socket.compat()).await.unwrap();
+
+    println!("Step 3");
 
     // Grab a controller for the Prover so we can enable deferred decryption.
     let ctrl = prover_fut.control();
@@ -87,6 +95,8 @@ async fn prover<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
             .await
             .unwrap();
 
+    println!("Step 4");
+
     // Spawn the connection to run in the background.
     tokio::spawn(connection);
 
@@ -94,41 +104,28 @@ async fn prover<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     // let us see the decrypted data until after the connection is closed.
     ctrl.defer_decryption().await.unwrap();
 
-    // dotenv::dotenv().ok();
-    // let channel_id = env::var("CHANNEL_ID").unwrap();
-    // let auth_token = env::var("AUTHORIZATION").unwrap();
-    // let user_agent = env::var("USER_AGENT").unwrap();
+    println!("Step 5");
 
-    // // MPC-TLS: Send Request and wait for Response.
-    // let request = Request::builder()
-    //     .uri(format!(
-    //         "https://backend.nodeguardians.io/api/users/statistics?key=general"
-    //     )) 
-    //     .header("Host", SERVER_DOMAIN)
-    //     .header("Accept", "application/json")
-    //     .header("Accept-Language", "en-US,en;q=0.9")
-    //     .header("Accept-Encoding", "identity")
-    //     .header("Authorization", format!("Bearer {auth_token}"))
-    //     .header("Origin", "https://nodeguardians.io" )
-    //     .header("Referer", "https://nodeguardians.io/" )
-    //     .body(Empty::<Bytes>::new())
-    //     .unwrap();
-
-    let url = "https://backend.nodeguardians.io/api/users/statistics?key=general";
-    let bearer_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTQxNiwiaWF0IjoxNzE3MTY4NjM2LCJleHAiOjE3MTc2MDA2MzZ9.2q4kL2-jJ_Q2igiAKmiY_6o0DfOF6viqLMXzrCiWNE0";
+    let url = "https://oauth2.googleapis.com/token";
+    // let bearer_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ODA5NSwiaWF0IjoxNzE3NDI4NDI2LCJleHAiOjE3MTc4NjA0MjZ9.Qp-HfWEbFoRdU_59RXwvHOEy3oNMPG03Jo42eNgNK-U";
     
     // Build the request
     let request = Request::builder()
         .uri(url)
-        .method("GET")
-        .header("Accept", "application/json")
-        .header("Accept-Encoding", "identity")
-        .header("Accept-Language", "en-US,en;q=0.9")
-        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTQxNiwiaWF0IjoxNzE3MTY4NjM2LCJleHAiOjE3MTc2MDA2MzZ9.2q4kL2-jJ_Q2igiAKmiY_6o0DfOF6viqLMXzrCiWNE0")
-        .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+        .method("POST")
+        .header("content-Type", "application/x-www-form-urlencoded")
+        .header("content-Length", "1600")
+        .header("connection", "closed")
+        .header("code", "4/0AdLIrYcNovcS6Ew9slKmJiKwOrtDYiryVHHU-3ppicylQvQgS_1fuOvF1KGjg_hEfQjz3A")
+        .header("client_id", "17528040277-99u31cdsqvoct6bbmfuvarb18ocfuhg2.apps.googleusercontent.com")
+        .header("client_secret", "GOCSPX-oLnxDDfp5oOoJ0sz5eIfKid_WIo")
+        .header("redirect_uri", "http://localhost:8000")
+        .header("grant_type", "authorization_code")
         .body(Empty::<Bytes>::new())
         .unwrap();
     let response = request_sender.send_request(request).await.unwrap();
+
+    println!("Step 6");
 
     // assert!(response.status() == StatusCode::OK);
 
@@ -137,6 +134,8 @@ async fn prover<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     redact_and_reveal_received_data(&mut prover);
     redact_and_reveal_sent_data(&mut prover);
     prover.prove().await.unwrap();
+
+    println!("Step 7");
 
     // Finalize.
     prover.finalize().await.unwrap()

@@ -93,7 +93,7 @@ async fn main() {
     let prover = prover.start_notarize();
 
     // Build proof (with or without redactions)
-    let redact = false;
+    let redact = true;
     let proof = if !redact {
         build_proof_without_redactions(prover).await
     } else {
